@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 #define DBG
 
@@ -72,7 +74,7 @@ struct Array {
     struct Val *arr;
 };
 
-inline size_t ValType_size(const enum ValType type) {
+static inline size_t ValType_size(const enum ValType type) {
     switch (type) {
         case VT_INT:
             return sizeof(long long int);
@@ -119,6 +121,32 @@ void refOrCopy(struct Val *dest, const struct Val *src);
 void destroy(const struct Val v);
 
 /**
+ * If the value is an object and it implements [Displayable], it will call it's "toString()" function and return the returned array.
+ * Otherwise:
+ *      type  example
+ *   float  ->        1.1
+ *   int    ->          1
+ *   array  ->  [1, 2, 3]
+ *   bool   ->       true
+ *   char   ->        'c'
+ *   obj    -> Obj(0x249)
+ */ 
+struct Array tostring(struct Val v);
+
+/**
+ * Heap-allocates a C string and copies the data of the array over.
+ * If any element in the array is not a char, it will return null.
+ */
+char *ascstring(struct Array a);
+
+/**
+ * Treats the array as a char array.
+ * Prints every character to the stream.
+ * If the element is not a char, cancel.
+ */
+void writeAsStr(struct Array a, FILE *stream);
+
+/**
  * \brief Creates a new array on the heap and executes @see moveOrCopy for every element.
  * \param data
  * \param len
@@ -128,27 +156,29 @@ struct Val arrayCreate(struct Val *data, size_t len);
 
 struct Val arrayFromStrCopy(const char * const str, const size_t len);
 
-inline struct Val charVal(const char c) {
+#define arrayFromCStr(str) arrayFromStrCopy(str, strlen(str))
+
+static inline struct Val charVal(const char c) {
     return (struct Val) { .owned = true, .type = VT_CHAR, .vchar = c };
 }
 
-inline struct Val boolVal(const bool b) {
+static inline struct Val boolVal(const bool b) {
     return (struct Val) { .owned = true, .type = VT_BOOL, .vbool = b };
 }
 
-inline struct Val intVal(const long long int i) {
+static inline struct Val intVal(const long long int i) {
     return (struct Val) { .owned = true, .type = VT_INT, .vint = i };
 }
 
-inline struct Val floatVal(const double f) {
+static inline struct Val floatVal(const double f) {
     return (struct Val) { .owned = true, .type = VT_FLOAT, .vfloat = f };
 }
 
-inline struct Val objValOwned(struct ObjHeader *obj) {
+static inline struct Val objValOwned(struct ObjHeader *obj) {
     return (struct Val) { .owned = true, .type = VT_OBJ, .vobj = obj };
 }
 
-inline struct Val objValRef(struct ObjHeader *obj) {
+static inline struct Val objValRef(struct ObjHeader *obj) {
     return (struct Val) { .owned = false, .type = VT_OBJ, .vobj = obj };
 }
 
@@ -164,7 +194,6 @@ struct Frame {
     struct Frame *parent;
 
     struct Val *stack;
-    size_t stackSize;
     size_t stackPtr;
 
     struct Val *locals;
@@ -172,8 +201,11 @@ struct Frame {
 };
 
 void initFrame(struct Frame *frame);
+void destroyFrame(struct Frame *frame);
 
 void interpret(struct Frame *frame, struct InstChunk chunk);
+
+void stackdump(struct Frame *frame, FILE *stream);
 
 
 #define IT_IMMF  (Inst) 0x00 // +8
