@@ -2,7 +2,6 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
-// #include <signal.h>
 
 void initFrame(struct Frame *frame) {
     frame->locals = NULL;
@@ -46,7 +45,7 @@ static void push(struct Frame *frame, struct Val val) {
 }
 
 static struct Val pop(struct Frame *frame) {
-    struct Val val = frame->stack[-- frame->stackPtr];
+    const struct Val val = frame->stack[-- frame->stackPtr];
     frame->stack = realloc(frame->stack,
                            sizeof(struct Val) * frame->stackPtr);
     return val;
@@ -56,13 +55,16 @@ inline static struct Val peek(const struct Frame *frame) {
     return frame->stack[frame->stackPtr - 1];
 }
 
+inline static bool has(const struct Frame *frame, const size_t elems) {
+    return frame->stackPtr >= elems;
+}
+
 void interpret(struct Frame *frame, struct InstChunk chunk) {
     uint32_t ip = 0;
     while (ip < chunk.instrSize) {
 #define READA(am) &chunk.instr[(ip += am) - am]
 #define READT(t) (*(t *)READA(sizeof(t)))
         Inst i = READT(Inst);
-        // raise(SIGTRAP);
         switch (i) {
             case IT_IMMF: {
                 push(frame, floatVal(READT(double)));
@@ -89,7 +91,8 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
             } break;
 
             case IT_POP: {
-                destroy(pop(frame));
+                if (has(frame, 1))
+                    destroy(pop(frame));
             } break;
 
             case IT_JUMP: {
@@ -106,6 +109,8 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
 
             case IT_LPUT: {
                 const uint32_t id = READT(uint32_t);
+                if (!has(frame, 1))
+                    break;
                 if (id >= frame->localsSize) {
                     frame->locals = realloc(frame->locals,
                                             sizeof(struct Val) * (id + 1));
@@ -116,6 +121,9 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
             } break;
 
             case IT_ADD: {
+                if (!has(frame, 2))
+                    break;
+
                 const struct Val a = pop(frame);
                 const struct Val b = pop(frame);
 
@@ -129,7 +137,7 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 } else if (a.type == VT_FLOAT && b.type == VT_FLOAT) {
                     res = floatVal(a.vfloat + b.vfloat);
                 } else {
-                    goto cleanup;
+                    res = nullVal();
                 }
 
                 push(frame, res);
@@ -141,6 +149,8 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
 
             case IT_ARR: {
                 const uint32_t len = READT(uint32_t);
+                if (!has(frame, len))
+                    break;
                 struct Val *start = frame->stack + frame->stackPtr - len;
                 frame->stackPtr -= len;
                 const struct Val arr = arrayCreate(start, len);
@@ -151,19 +161,40 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
             } break;
 
             case IT_REV: {
+                if (!has(frame, 1))
+                    goto it_rev_bad;
                 const struct Val old = pop(frame);
+                if (old.type != VT_ARR)
+                    goto it_rev_bad;
                 const struct Val new = arrayRevCopy(old.varr);
                 push(frame, new);
                 destroy(old);
+                break;
+
+                it_rev_bad:
+                    destroy(old);
+                    push(frame, nullVal());
             } break;
 
             case IT_REVR: {
+                if (!has(frame, 1))
+                    goto it_revr_bad;
                 const struct Val other = peek(frame);
+                if (other.type != VT_ARR)
+                    goto it_revr_bad;
                 const struct Val new = arrayRevCopy(other.varr);
                 push(frame, new);
+                break;
+
+                it_revr_bad:
+                    push(frame, nullVal());
             } break;
 
             case IT_COPY: {
+                if (!has(frame, 1)) {
+                    push(frame, nullVal());
+                    break;
+                }
                 const struct Val other = peek(frame);
                 struct Val new;
                 copy(&new, &other);
@@ -171,10 +202,25 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
             } break;
 
             case IT_REF: {
+                if (!has(frame, 1)) {
+                    push(frame, nullVal());
+                    break;
+                }
                 const struct Val other = peek(frame);
                 struct Val new;
                 refOrCopy(&new, &other);
                 push(frame, new);
+            } break;
+
+            case IT_BRANCH: {
+                uint32_t tg = READT(uint32_t);
+                if (!has(frame, 1))
+                    break;
+                const struct Val v = pop(frame);
+                if (v.type == VT_BOOL)
+                    if (v.vbool)
+                        ip = tg;
+                destroy(v);
             } break;
 
             default: {

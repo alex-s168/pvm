@@ -28,5 +28,6 @@ int main() {
     interpret(&frame, (struct InstChunk) { .instr = insts, .instrSize = sizeof(insts) });
     stackdump(&frame, stdout);
     destroyFrame(&frame);
+    gcStats(stdout);
     return 0;
 }

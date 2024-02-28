@@ -112,6 +112,7 @@ struct Val {
 struct ObjHeader *gcAlloc(const size_t size);
 void gcUse(struct ObjHeader *h);
 void gcUnuse(struct ObjHeader *h);
+void gcStats(FILE *stream);
 
 #define OBJ_ALLOC(claz) ((struct c##claz *) gcAlloc(sizeof(struct c##claz *)))
 #define OBJ_T(claz) struct c##claz *
@@ -237,43 +238,45 @@ void interpret(struct Frame *frame, struct InstChunk chunk);
 void stackdump(struct Frame *frame, FILE *stream);
 
 
-#define IT_IMMF  (Inst) 0x00 // +8
-#define IT_IMMI  (Inst) 0x01 // +8
-#define IT_POP   (Inst) 0x02
-#define IT_TRUE  (Inst) 0x03
-#define IT_FALSE (Inst) 0x04
-#define IT_IMMC  (Inst) 0x05 // +1
-#define IT_ARR   (Inst) 0x06 // +4
-#define IT_JUMP  (Inst) 0x07 // +4
-#define IT_LGET  (Inst) 0x08 // +4
-#define IT_LPUT  (Inst) 0x09 // +4
-#define IT_ADD   (Inst) 0x0a
-#define IT_REV   (Inst) 0x0b
-#define IT_NULL  (Inst) 0x0c
-#define IT_COPY  (Inst) 0x0d
-#define IT_REVR  (Inst) 0x0e
-#define IT_REF   (Inst) 0x0f
+#define IT_IMMF   (Inst) 0x00 // +8
+#define IT_IMMI   (Inst) 0x01 // +8
+#define IT_POP    (Inst) 0x02
+#define IT_TRUE   (Inst) 0x03
+#define IT_FALSE  (Inst) 0x04
+#define IT_IMMC   (Inst) 0x05 // +1
+#define IT_ARR    (Inst) 0x06 // +4
+#define IT_JUMP   (Inst) 0x07 // +4
+#define IT_LGET   (Inst) 0x08 // +4
+#define IT_LPUT   (Inst) 0x09 // +4
+#define IT_ADD    (Inst) 0x0a
+#define IT_REV    (Inst) 0x0b
+#define IT_NULL   (Inst) 0x0c
+#define IT_COPY   (Inst) 0x0d
+#define IT_REVR   (Inst) 0x0e
+#define IT_REF    (Inst) 0x0f
+#define IT_BRANCH (Inst) 0x10 // +4
 
 
 #define III_ARR_4(p) ((Inst *)p)[0], ((Inst *)p)[1], ((Inst *)p)[2], ((Inst *)p)[3]
 #define III_ARR_8(p) III_ARR_4(p), III_ARR_4(((Inst *)p)+4)
 
 
-#define I_IMMF(flt) IT_IMMF, III_ARR_8((double[]){(double)flt})
-#define I_IMMI(i)   IT_IMMI, III_ARR_8((long long int[]){(long long int)i})
-#define I_BOOL(b)   b ? IT_TRUE : IT_FALSE
-#define I_POP()     IT_POP
-#define I_IMMC(c)   IT_IMMC, (Inst) c
-#define I_ARR(len)  IT_ARR, III_ARR_4((uint32_t[]){(uint32_t)len})
-#define I_JUMP(tg)  IT_JUMP, III_ARR_4((uint32_t[]){(uint32_t)tg})
-#define I_LGET(id)  IT_LGET, III_ARR_4((uint32_t[]){(uint32_t)id})
-#define I_LPUT(id)  IT_LPUT, III_ARR_4((uint32_t[]){(uint32_t)id})
-#define I_ADD()     IT_ADD
-#define I_REV()     IT_REV
-#define I_NULL()    IT_NULL
-#define I_REVR()    IT_REVR
-#define I_COPY()    IT_COPY
-#define I_REF()     IT_REF
+#define I_IMMF(flt)  IT_IMMF, III_ARR_8((double[]){(double)flt})
+#define I_IMMI(i)    IT_IMMI, III_ARR_8((long long int[]){(long long int)i})
+#define I_BOOL(b)    b ? IT_TRUE : IT_FALSE
+#define I_POP()      IT_POP
+#define I_IMMC(c)    IT_IMMC, (Inst) c
+#define I_ARR(len)   IT_ARR, III_ARR_4((uint32_t[]){(uint32_t)len})
+#define I_JUMP(tg)   IT_JUMP, III_ARR_4((uint32_t[]){(uint32_t)tg})
+#define I_LGET(id)   IT_LGET, III_ARR_4((uint32_t[]){(uint32_t)id})
+#define I_LPUT(id)   IT_LPUT, III_ARR_4((uint32_t[]){(uint32_t)id})
+#define I_ADD()      IT_ADD
+#define I_REV()      IT_REV
+#define I_NULL()     IT_NULL
+#define I_REVR()     IT_REVR
+#define I_COPY()     IT_COPY
+#define I_REF()      IT_REF
+#define I_BRANCH(tg) IT_BRANCH, III_ARR_4((uint32_t[]){(uint32_t)tg})
 
 
 #endif //VM_H
