@@ -84,6 +84,10 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 push(frame, boolVal(false));
             } break;
 
+            case IT_NULL: {
+                push(frame, nullVal());
+            } break;
+
             case IT_POP: {
                 destroy(pop(frame));
             } break;
@@ -95,7 +99,6 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
 
             case IT_LGET: {
                 const uint32_t id = READT(uint32_t);
-                printf("get id %ul\n", id);
                 struct Val v = frame->locals[id];
                 v.owned = false;
                 push(frame, v);
@@ -103,7 +106,6 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
 
             case IT_LPUT: {
                 const uint32_t id = READT(uint32_t);
-                printf("put id %ul\n", id);
                 if (id >= frame->localsSize) {
                     frame->locals = realloc(frame->locals,
                                             sizeof(struct Val) * (id + 1));
@@ -146,6 +148,33 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                                        (frame->stackPtr + 1) * sizeof(struct Val));
                 frame->stack[frame->stackPtr] = arr;
                 frame->stackPtr ++;
+            } break;
+
+            case IT_REV: {
+                const struct Val old = pop(frame);
+                const struct Val new = arrayRevCopy(old.varr);
+                push(frame, new);
+                destroy(old);
+            } break;
+
+            case IT_REVR: {
+                const struct Val other = peek(frame);
+                const struct Val new = arrayRevCopy(other.varr);
+                push(frame, new);
+            } break;
+
+            case IT_COPY: {
+                const struct Val other = peek(frame);
+                struct Val new;
+                copy(&new, &other);
+                push(frame, new);
+            } break;
+
+            case IT_REF: {
+                const struct Val other = peek(frame);
+                struct Val new;
+                refOrCopy(&new, &other);
+                push(frame, new);
             } break;
 
             default: {

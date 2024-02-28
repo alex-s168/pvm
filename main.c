@@ -20,6 +20,8 @@ int main() {
         I_IMMF(2),
         I_IMMF(3),
         I_ARR(3),
+
+        I_ARR(2),
     };
     struct Frame frame;
     initFrame(&frame);

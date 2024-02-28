@@ -28,25 +28,40 @@ struct Array tostring(struct Val v) {
         case VT_OBJ: {
             sprintf(buf, "%s(%p)", v.vobj->map->name, v.vobj);
             return arrayFromCStr(buf).varr;
-        }
+        } break;
 
         case VT_ARR: {
-            struct Array out = arrayFromCStr("[").varr;
-            const struct Array seperator = arrayFromCStr(", ").varr;
+            if (v.varr.elements == 0)
+                goto not_char;
+
             for (size_t i = 0; i < v.varr.elements; i ++) {
-                if (i != 0) {
-                    arrayJoin(&out, seperator);
-                }
-                const struct Array el = tostring(v.varr.arr[i]);
-                arrayJoin(&out, el);
-                destroyArr(el);
+                if (v.varr.arr[i].type != VT_CHAR)
+                    goto not_char;
             }
-            const struct Array end = arrayFromCStr("]").varr;
-            arrayJoin(&out, end);
-            destroyArr(seperator);
-            destroyArr(end);
-            return out;
-        }
+
+            return v.varr;
+
+            not_char:
+                struct Array out = arrayFromCStr("[").varr;
+                const struct Array seperator = arrayFromCStr(", ").varr;
+                for (size_t i = 0; i < v.varr.elements; i ++) {
+                    if (i != 0) {
+                        arrayJoin(&out, seperator);
+                    }
+                    const struct Array el = tostring(v.varr.arr[i]);
+                    arrayJoin(&out, el);
+                    destroyArr(el);
+                }
+                const struct Array end = arrayFromCStr("]").varr;
+                arrayJoin(&out, end);
+                destroyArr(seperator);
+                destroyArr(end);
+                return out;
+        } break;
+
+        case VT_NULL: {
+            return arrayFromCStr("null").varr;
+        } break;
 
         default:
             return arrayFromCStr("Unknown").varr;

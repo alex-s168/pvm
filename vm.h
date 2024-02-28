@@ -20,7 +20,8 @@ enum ValType {
     VT_CHAR,
     VT_BOOL,
     VT_OBJ,
-    VT_ARR
+    VT_ARR,
+    VT_NULL,
 };
 
 struct ObjVarInfo {
@@ -88,6 +89,8 @@ static inline size_t ValType_size(const enum ValType type) {
             return sizeof(void *);
         case VT_ARR:
             return sizeof(struct Array);
+        case VT_NULL:
+            return 0;
         default:
             return UINT64_MAX;
     }
@@ -116,6 +119,12 @@ void gcUnuse(struct ObjHeader *h);
 #define OBJ_UNUSE(o) gcUse((struct ObjHeader *) (o))
 
 void copy(struct Val *dest, const struct Val *src);
+
+/**
+ * \brief Moves the given value into the given destination.
+ * If the source value is not owned, it creates a copy of it and destroys the source value.
+ * Sets the source value to null afterwards.
+ */
 void moveOrCopy(struct Val *dest, const struct Val *src);
 void refOrCopy(struct Val *dest, const struct Val *src);
 
@@ -160,7 +169,13 @@ struct Val arrayCreate(struct Val *data, size_t len);
 
 struct Val arrayFromStrCopy(const char * const str, const size_t len);
 
+struct Val uninitializedArray(size_t size);
+
+struct Val arrayCopy(const struct Array src);
+
 void arrayJoin(struct Array *dest, const struct Array src);
+
+struct Val arrayRevCopy(const struct Array src);
 
 #define arrayFromCStr(str) arrayFromStrCopy(str, strlen(str))
 
@@ -182,6 +197,18 @@ static inline struct Val floatVal(const double f) {
 
 static inline struct Val objVal(struct ObjHeader *obj) {
     return (struct Val) { .owned = true, .type = VT_OBJ, .vobj = obj };
+}
+
+static inline struct Val nullVal() {
+    return (struct Val) { .owned = true, .type = VT_NULL };
+}
+
+static inline struct Val arrayValOwned(struct Array arr) {
+    return (struct Val) { .owned = true, .type = VT_ARR, .varr = arr };
+}
+
+static inline struct Val arrayValRef(struct Array arr) {
+    return (struct Val) { .owned = false, .type = VT_ARR, .varr = arr };
 }
 
 
@@ -221,6 +248,11 @@ void stackdump(struct Frame *frame, FILE *stream);
 #define IT_LGET  (Inst) 0x08 // +4
 #define IT_LPUT  (Inst) 0x09 // +4
 #define IT_ADD   (Inst) 0x0a
+#define IT_REV   (Inst) 0x0b
+#define IT_NULL  (Inst) 0x0c
+#define IT_COPY  (Inst) 0x0d
+#define IT_REVR  (Inst) 0x0e
+#define IT_REF   (Inst) 0x0f
 
 
 #define III_ARR_4(p) ((Inst *)p)[0], ((Inst *)p)[1], ((Inst *)p)[2], ((Inst *)p)[3]
@@ -237,6 +269,11 @@ void stackdump(struct Frame *frame, FILE *stream);
 #define I_LGET(id)  IT_LGET, III_ARR_4((uint32_t[]){(uint32_t)id})
 #define I_LPUT(id)  IT_LPUT, III_ARR_4((uint32_t[]){(uint32_t)id})
 #define I_ADD()     IT_ADD
+#define I_REV()     IT_REV
+#define I_NULL()    IT_NULL
+#define I_REVR()    IT_REVR
+#define I_COPY()    IT_COPY
+#define I_REF()     IT_REF
 
 
 #endif //VM_H

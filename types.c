@@ -53,6 +53,7 @@ void moveOrCopy(struct Val *dest, const struct Val *src) {
     }
     else {
         copy(dest, src);
+        destroy(*src);
     }
 }
 

@@ -1,34 +1,18 @@
 #include "vm.h"
 
 struct Val arrayCreate(struct Val *data, size_t len) {
-    struct Val *new = malloc(sizeof(struct Val) * len);
+    const struct Val arr = uninitializedArray(len);
     for (size_t i = 0; i < len; i ++) {
-        moveOrCopy(&new[i], &data[i]);
+        moveOrCopy(&arr.varr.arr[i], &data[i]);
     }
-
-    struct Val arr;
-    arr.type = VT_ARR;
-    arr.owned = true;
-    arr.varr = (struct Array) {
-        .elements = len,
-        .arr = new
-    };
     return arr;
 }
 
 struct Val arrayFromStrCopy(const char * const str, const size_t len) {
-    struct Val *new = malloc(sizeof(struct Val) * len);
+    const struct Val arr = uninitializedArray(len);
     for (size_t i = 0; i < len; i ++) {
-        new[i] = charVal(str[i]);
+        arr.varr.arr[i] = charVal(str[i]);
     }
-
-    struct Val arr;
-    arr.type = VT_ARR;
-    arr.owned = true;
-    arr.varr = (struct Array) {
-        .elements = len,
-        .arr = new
-    };
     return arr;
 }
 
@@ -39,4 +23,27 @@ void arrayJoin(struct Array *dest, const struct Array src) {
            src.arr,
            src.elements * sizeof(struct Val));
     dest->elements += src.elements;
+}
+
+struct Val uninitializedArray(size_t size) {
+    struct Array arr;
+    arr.elements = size;
+    arr.arr = malloc(sizeof(struct Val) * size);
+    return arrayValOwned(arr);
+}
+
+struct Val arrayCopy(const struct Array src) {
+    const struct Val dest = uninitializedArray(src.elements);
+    for (size_t i = 0; i < src.elements; i ++) {
+        refOrCopy(&dest.varr.arr[i], &src.arr[i]);
+    }
+    return dest;
+}
+
+struct Val arrayRevCopy(const struct Array src) {
+    const struct Val dest = uninitializedArray(src.elements);
+    for (size_t i = 0; i < src.elements; i ++) {
+        refOrCopy(&dest.varr.arr[src.elements - i - 1], &src.arr[i]);
+    }
+    return dest;
 }
