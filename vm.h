@@ -174,12 +174,8 @@ static inline struct Val floatVal(const double f) {
     return (struct Val) { .owned = true, .type = VT_FLOAT, .vfloat = f };
 }
 
-static inline struct Val objValOwned(struct ObjHeader *obj) {
+static inline struct Val objVal(struct ObjHeader *obj) {
     return (struct Val) { .owned = true, .type = VT_OBJ, .vobj = obj };
-}
-
-static inline struct Val objValRef(struct ObjHeader *obj) {
-    return (struct Val) { .owned = false, .type = VT_OBJ, .vobj = obj };
 }
 
 

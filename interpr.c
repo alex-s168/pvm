@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <signal.h>
+// #include <signal.h>
 
 void initFrame(struct Frame *frame) {
     frame->locals = NULL;
@@ -60,8 +60,8 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
     uint32_t ip = 0;
     while (ip < chunk.instrSize) {
         uint32_t lastIp = ip;
-#define READA(am) &chunk.instr[ip += am]
-#define READT(t) *(t *)READA(sizeof(t))
+#define READA(am) &chunk.instr[(ip += am) - am]
+#define READT(t) (*(t *)READA(sizeof(t)))
         Inst i = READT(Inst);
         printf("at ip %ul: %uu\n  ", lastIp, i);
         for (size_t ii = ip; ii < chunk.instrSize; ii ++) {
@@ -114,6 +114,7 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                     frame->locals = realloc(frame->locals,
                                             sizeof(struct Val) * (id + 1));
                 }
+                frame->localsSize = id + 1;
                 struct Val v = pop(frame);
                 moveOrCopy(&frame->locals[id], &v);
             } break;
