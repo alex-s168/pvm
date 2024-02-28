@@ -16,7 +16,37 @@ struct Array tostring(struct Val v) {
             return arrayFromCStr(buf).varr;
         } break;
 
-        // TODO 
+        case VT_CHAR: {
+            sprintf(buf, "\"%c\"", v.vchar);
+            return arrayFromCStr(buf).varr;
+        } break;
+
+        case VT_BOOL: {
+            return arrayFromCStr(v.vbool ? "true" : "false").varr;
+        } break;
+
+        case VT_OBJ: {
+            sprintf(buf, "%s(%p)", v.vobj->map->name, v.vobj);
+            return arrayFromCStr(buf).varr;
+        }
+
+        case VT_ARR: {
+            struct Array out = arrayFromCStr("[").varr;
+            const struct Array seperator = arrayFromCStr(", ").varr;
+            for (size_t i = 0; i < v.varr.elements; i ++) {
+                if (i != 0) {
+                    arrayJoin(&out, seperator);
+                }
+                const struct Array el = tostring(v.varr.arr[i]);
+                arrayJoin(&out, el);
+                destroyArr(el);
+            }
+            const struct Array end = arrayFromCStr("]").varr;
+            arrayJoin(&out, end);
+            destroyArr(seperator);
+            destroyArr(end);
+            return out;
+        }
 
         default:
             return arrayFromCStr("Unknown").varr;

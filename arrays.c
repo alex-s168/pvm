@@ -16,7 +16,6 @@ struct Val arrayCreate(struct Val *data, size_t len) {
     return arr;
 }
 
-
 struct Val arrayFromStrCopy(const char * const str, const size_t len) {
     struct Val *new = malloc(sizeof(struct Val) * len);
     for (size_t i = 0; i < len; i ++) {
@@ -31,4 +30,13 @@ struct Val arrayFromStrCopy(const char * const str, const size_t len) {
         .arr = new
     };
     return arr;
+}
+
+void arrayJoin(struct Array *dest, const struct Array src) {
+    dest->arr = realloc(dest->arr,
+                        (dest->elements + src.elements) * sizeof(struct Val));
+    memcpy(dest->arr + dest->elements,
+           src.arr,
+           src.elements * sizeof(struct Val));
+    dest->elements += src.elements;
 }

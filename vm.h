@@ -42,13 +42,14 @@ struct ObjVarInfo {
 /**
  * \brief Maps variable names to their offset and type in objects
  */
-struct ObjMap {
-    size_t                          len;
-    const char ** const             names;
+struct Class {
+    size_t                    const len;
+    const char **             const names;
     const struct ObjVarInfo * const vars;
+    const char *              const name;
 };
 
-const struct ObjVarInfo *ObjMap_resolve(struct ObjMap *map, const char *var);
+const struct ObjVarInfo *ObjMap_resolve(struct Class *map, const char *var);
 
 typedef void (*DestroyFun)(struct ObjHeader *);
 typedef void (*CopyFun)(struct ObjHeader *dst, struct ObjHeader *src);
@@ -59,7 +60,7 @@ struct ObjHeader {
     size_t size;
     DestroyFun destroy_fun;
     CopyFun copy_fun;
-    struct ObjMap *map;
+    struct Class *map;
 };
 
 struct Val *objVarByName(struct ObjHeader *obj, const char *var);
@@ -118,6 +119,7 @@ void copy(struct Val *dest, const struct Val *src);
 void moveOrCopy(struct Val *dest, const struct Val *src);
 void refOrCopy(struct Val *dest, const struct Val *src);
 
+void destroyArr(const struct Array a);
 void destroy(const struct Val v);
 
 /**
@@ -154,7 +156,11 @@ void writeAsStr(struct Array a, FILE *stream);
  */
 struct Val arrayCreate(struct Val *data, size_t len);
 
+#define arrayEmpty() arrayCreate(NULL, 0)
+
 struct Val arrayFromStrCopy(const char * const str, const size_t len);
+
+void arrayJoin(struct Array *dest, const struct Array src);
 
 #define arrayFromCStr(str) arrayFromStrCopy(str, strlen(str))
 

@@ -18,10 +18,10 @@ void stackdump(struct Frame *frame, FILE *stream) {
     fputs("<<<\n", stream);
     for (size_t i = 0; i < frame->stackPtr; i ++) {
         fputc(' ', stream);
-        struct Val elem = frame->stack[i];
-        struct Array tostr = tostring(elem);
+        const struct Val elem = frame->stack[i];
+        const struct Array tostr = tostring(elem);
         writeAsStr(tostr, stream);
-        free(tostr.arr);
+        destroyArr(tostr);
         fputc('\n', stream);
     }
     fputs(">>>\n", stream);
@@ -46,7 +46,7 @@ static void push(struct Frame *frame, struct Val val) {
 }
 
 static struct Val pop(struct Frame *frame) {
-    struct Val val = frame->stack[frame->stackPtr --];
+    struct Val val = frame->stack[-- frame->stackPtr];
     frame->stack = realloc(frame->stack,
                            sizeof(struct Val) * frame->stackPtr);
     return val;
@@ -59,15 +59,9 @@ inline static struct Val peek(const struct Frame *frame) {
 void interpret(struct Frame *frame, struct InstChunk chunk) {
     uint32_t ip = 0;
     while (ip < chunk.instrSize) {
-        uint32_t lastIp = ip;
 #define READA(am) &chunk.instr[(ip += am) - am]
 #define READT(t) (*(t *)READA(sizeof(t)))
         Inst i = READT(Inst);
-        printf("at ip %ul: %uu\n  ", lastIp, i);
-        for (size_t ii = ip; ii < chunk.instrSize; ii ++) {
-            printf("%ul ", chunk.instr[ii]);
-        }
-        printf("\n");
         // raise(SIGTRAP);
         switch (i) {
             case IT_IMMF: {
@@ -144,7 +138,14 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
             } break;
 
             case IT_ARR: {
-                assert(false);
+                const uint32_t len = READT(uint32_t);
+                struct Val *start = frame->stack + frame->stackPtr - len;
+                frame->stackPtr -= len;
+                const struct Val arr = arrayCreate(start, len);
+                frame->stack = realloc(frame->stack,
+                                       (frame->stackPtr + 1) * sizeof(struct Val));
+                frame->stack[frame->stackPtr] = arr;
+                frame->stackPtr ++;
             } break;
 
             default: {

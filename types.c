@@ -65,6 +65,13 @@ void refOrCopy(struct Val *dest, const struct Val *src) {
     }
 }
 
+void destroyArr(const struct Array a) {
+    for (size_t i = 0; i < a.elements; i ++) {
+        destroy(a.arr[i]);
+    }
+    free(a.arr);
+}
+
 void destroy(const struct Val v) {
     if (!v.owned)
         return;
@@ -73,14 +80,11 @@ void destroy(const struct Val v) {
         gcUnuse(v.vobj);
     }
     else if (v.type == VT_ARR) {
-        for (size_t i = 0; i < v.varr.elements; i ++) {
-            destroy(v.varr.arr[i]);
-        }
-        free(v.varr.arr);
+        destroyArr(v.varr);
     }
 }
 
-const struct ObjVarInfo *ObjMap_resolve(struct ObjMap *map, const char *var) {
+const struct ObjVarInfo *ObjMap_resolve(struct Class *map, const char *var) {
     for (size_t i = 0; i < map->len; i ++) {
         if (strcmp(map->names[i], var) == 0) {
             return &map->vars[i];
