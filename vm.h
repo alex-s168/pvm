@@ -236,12 +236,32 @@ static void dumpChunk(struct InstChunk chunk, FILE *stream) {
     fprintf(stream, "\n");
 }
 
+struct DynamicChunk {
+    struct DynamicList instr;
+};
+
+static struct DynamicChunk dynChunkInit() {
+    struct DynamicChunk c;
+    DynamicList_init(&c.instr,
+                     sizeof(Inst),
+                     getLIBCAlloc(),
+                     0);
+    return c;
+}
+
+static struct InstChunk dynChunkAs(struct DynamicChunk dyn) {
+    return (struct InstChunk) {
+        .instr = dyn.instr.fixed.data,
+        .instrSize = dyn.instr.fixed.len
+    };
+}
+
 struct Frame {
     bool extraDbg;
 
     struct Frame *parent;
 
-    struct AllyStats stackAllocStats;
+    struct KALLOK_PREFIX AllyStats stackAllocStats;
     /* struct Val * */
     struct DynamicList stack;
 
@@ -255,6 +275,14 @@ void destroyFrame(struct Frame *frame);
 void interpret(struct Frame *frame, struct InstChunk chunk);
 
 void framedump(struct Frame *frame, FILE *stream);
+
+struct DynamicChunk analyze(struct InstChunk in,
+                         size_t *inCount,
+                         size_t *outCount,
+                         size_t *varIntCount,
+                         size_t *usedCount);
+
+void disasm(struct InstChunk chunk, FILE *stream);
 
 
 #define IT_IMMF   (Inst) 0x00 // +8
@@ -279,6 +307,7 @@ void framedump(struct Frame *frame, FILE *stream);
 #define IT_LTNUM  (Inst) 0x13
 #define IT_NZNUM  (Inst) 0x14
 #define IT_SUB    (Inst) 0x15
+#define IT_JITALYSDAT0   (Inst) 0x16
 
 
 #define III_ARR_4(p) ((Inst *)p)[0], ((Inst *)p)[1], ((Inst *)p)[2], ((Inst *)p)[3]
@@ -306,6 +335,7 @@ void framedump(struct Frame *frame, FILE *stream);
 #define I_LTNUM()    IT_LTNUM
 #define I_NZNUM()    IT_NZNUM
 #define I_SUB()      IT_SUB
+#define I_JITALYSDAT0(data)      IT_JITALYSDAT0, III_ARR_4((uint32_t[]){(uint32_t)data})
 
 
 #define INSTRS(...)  ((Inst[]) { __VA_ARGS__ })

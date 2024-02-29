@@ -41,4 +41,8 @@ add_executable(pvm
         strop.c
         gen.h
         gen.c
-        kollektions/alloc/statistic.c)
+        kollektions/alloc/statistic.c
+        kollektions/kallok_pages.h
+        kollektions/alloc/pages.c
+        analyze.c
+        disasm.c)

@@ -13,24 +13,32 @@ int main() {
     // a->fname = arrayFromStrCopy("33", 2).varr;
     // OBJ_UNUSE(a);
 
-    /*
     Inst insts[] = {
-        I_IMMF(3.0),
+        I_IMMF(1.1),
         I_LPUT(0),
-        I_IMMF(1.0),
-        I_LGET(0),
         I_ADD(),
-
-        I_IMMF(1),
-        I_IMMF(2),
-        I_IMMF(3),
-        I_ARR(3),
-
-        I_ARR(2),
+        I_ADD(),
+        I_LPUT(2),
+        I_LGET(2),
     };
     struct InstChunk chunk = { .instr = insts, .instrSize = sizeof(insts) };
-    */
 
+    size_t inCount;
+    size_t outCount;
+    size_t varIntCount;
+    size_t usedCount;
+    struct DynamicChunk analyzed = analyze(chunk, &inCount, &outCount, &varIntCount, &usedCount);
+
+    printf(" inputs: %zu\n outputs: %zu\n used internal stack positions: %zu\n processed: %zu / %u\n",
+        inCount, outCount, varIntCount, usedCount, chunk.instrSize);
+
+    printf("\ndiasm:\n");
+
+    disasm(dynChunkAs(analyzed), stdout);
+
+    DynamicList_clear(&analyzed.instr);
+
+    /*
     struct FunGenCtx main;
     startFunGen(&main);
 
@@ -41,7 +49,7 @@ int main() {
     {
         startBlockGen(&start);
 
-        blockGenInstrsEz(&start, (Inst[]) { I_IMMI(100000) });
+        blockGenInstrsEz(&start, (Inst[]) { I_IMMI(10000000) });
         blockGenInstrsEz(&start, (Inst[]) { I_LPUT(i) });
 
         //blockGenInstrsEz(&start, (Inst[]) { IT_JUMP });
@@ -71,6 +79,7 @@ int main() {
 
     fputs("Instruction chunk:\n ", stdout);
     dumpChunk(chunk, stdout);
+    disasm(chunk, stdout);
     fputc('\n', stdout);
 
     struct Frame frame;
@@ -89,6 +98,6 @@ int main() {
     gcStats(stdout);
 
     free(chunk.instr);
-
+*/
     return 0;
 }

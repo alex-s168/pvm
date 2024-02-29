@@ -339,6 +339,10 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 }
             UNARY_OP_END
 
+            case IT_JITALYSDAT0: {
+                (void) READT(uint32_t);
+            } break;
+
             default: {
                 assert(false);
             } break;
