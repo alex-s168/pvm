@@ -10,4 +10,6 @@ add_executable(pvm main.c
         arrays.c
         class.h
         interpr.c
-        strop.c)
+        strop.c
+        gen.h
+        gen.c)

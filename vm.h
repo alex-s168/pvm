@@ -44,10 +44,13 @@ struct ObjVarInfo {
  * \brief Maps variable names to their offset and type in objects
  */
 struct Class {
-    size_t                    const len;
+          size_t              const len;
     const char **             const names;
     const struct ObjVarInfo * const vars;
     const char *              const name;
+
+    const char **             const super;
+          size_t              const superCount;
 };
 
 const struct ObjVarInfo *ObjMap_resolve(struct Class *map, const char *var);
@@ -66,6 +69,9 @@ struct ObjHeader {
 
 struct Val *objVarByName(struct ObjHeader *obj, const char *var);
 struct Val *objVarByInfo(struct ObjHeader *obj, const struct ObjVarInfo *info);
+
+bool classChildOf(struct Class *clazz, const char *parent);
+bool objInstanceOf(struct ObjHeader *obj, const char *clazz);
 
 // TODO: null
 
@@ -127,6 +133,7 @@ void copy(struct Val *dest, const struct Val *src);
  * Sets the source value to null afterwards.
  */
 void moveOrCopy(struct Val *dest, const struct Val *src);
+
 void refOrCopy(struct Val *dest, const struct Val *src);
 
 void destroyArr(const struct Array a);
@@ -220,6 +227,13 @@ struct InstChunk {
     Inst *instr;
 };
 
+static void dumpChunk(struct InstChunk chunk, FILE *stream) {
+    for (size_t i = 0; i < chunk.instrSize; i ++) {
+        fprintf(stream, "%02hhX ", chunk.instr[i]);
+    }
+    fprintf(stream, "\n");
+}
+
 struct Frame {
     struct Frame *parent;
 
@@ -277,6 +291,9 @@ void stackdump(struct Frame *frame, FILE *stream);
 #define I_COPY()     IT_COPY
 #define I_REF()      IT_REF
 #define I_BRANCH(tg) IT_BRANCH, III_ARR_4((uint32_t[]){(uint32_t)tg})
+
+
+#define INSTRS(...)  ((Inst[]) { __VA_ARGS__ })
 
 
 #endif //VM_H

@@ -106,3 +106,18 @@ struct Val *objVarByInfo(struct ObjHeader *obj, const struct ObjVarInfo *info) {
         return info->stat.addr;
     return (struct Val *) ((char *) obj + info->dyn.offset);
 }
+
+bool classChildOf(struct Class *clazz, const char *parent) {
+    for (size_t i = 0; i < clazz->superCount; i ++)
+        if (strcmp(clazz->super[i], parent) == 0)
+            return true;
+
+    return false;
+}
+
+bool objInstanceOf(struct ObjHeader *obj, const char *clazz) {
+    if (strcmp(obj->map->name, clazz) == 0)
+        return true;
+
+    return classChildOf(obj->map, clazz);
+}
