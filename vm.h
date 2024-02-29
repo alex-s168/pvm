@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "kollektions/lists.h"
+
 #define DBG
 
 #ifdef DBG
@@ -235,21 +237,24 @@ static void dumpChunk(struct InstChunk chunk, FILE *stream) {
 }
 
 struct Frame {
+    bool extraDbg;
+
     struct Frame *parent;
 
-    struct Val *stack;
-    size_t stackPtr;
+    struct AllyStats stackAllocStats;
+    /* struct Val * */
+    struct DynamicList stack;
 
     struct Val *locals;
     uint32_t localsSize;
 };
 
-void initFrame(struct Frame *frame);
+void initFrame(struct Frame *frame, bool extraDbg);
 void destroyFrame(struct Frame *frame);
 
 void interpret(struct Frame *frame, struct InstChunk chunk);
 
-void stackdump(struct Frame *frame, FILE *stream);
+void framedump(struct Frame *frame, FILE *stream);
 
 
 #define IT_IMMF   (Inst) 0x00 // +8

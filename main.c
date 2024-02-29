@@ -69,20 +69,23 @@ int main() {
     struct InstChunk chunk = endFunGen(&main);
     destroyFunGen(&main);
 
+    fputs("Instruction chunk:\n ", stdout);
     dumpChunk(chunk, stdout);
+    fputc('\n', stdout);
 
     struct Frame frame;
-    initFrame(&frame);
+    initFrame(&frame, true);
 
     clock_t t = clock();
     interpret(&frame, chunk);
     t = clock() - t;
     double seconds = (double) t / CLOCKS_PER_SEC;
-    printf("Execution time: %fs\n", seconds);
+    printf("Execution time: %fs\n\n", seconds);
 
 
-    stackdump(&frame, stdout);
+    framedump(&frame, stdout);
     destroyFrame(&frame);
+    fputc('\n', stdout);
     gcStats(stdout);
 
     free(chunk.instr);

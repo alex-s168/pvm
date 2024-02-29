@@ -3,18 +3,34 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void initFrame(struct Frame *frame) {
+void initFrame(struct Frame *frame, bool extraDbg) {
+    frame->extraDbg = extraDbg;
+
     frame->locals = NULL;
     frame->localsSize = 0;
 
     frame->parent = NULL;
 
-    frame->stack = NULL;
-    frame->stackPtr = 0;
+    Ally ally;
+    if (extraDbg)
+        ally = getStatAlloc(getLIBCAlloc(), &frame->stackAllocStats);
+    else
+        ally = getLIBCAlloc();
+
+    DynamicList_init(&frame->stack,
+                     sizeof(struct Val),
+                     ally,
+                     4);
 }
 
-void stackdump(struct Frame *frame, FILE *stream) {
-    fputs("locals:\n", stream);
+void framedump(struct Frame *frame, FILE *stream) {
+    if (frame->extraDbg) {
+        fputs("Stack allocation statistics:\n", stream);
+        outputStats(&frame->stackAllocStats, stream);
+        fputc('\n', stream);
+    }
+
+    fputs("Locals:\n", stream);
     for (size_t i = 0; i < frame->localsSize; i ++) {
         fprintf(stream, " %zu: ", i);
         const struct Val elem = frame->locals[i];
@@ -24,11 +40,11 @@ void stackdump(struct Frame *frame, FILE *stream) {
         fputc('\n', stream);
     }
 
-    fputs("<<<\n", stream);
-    for (size_t i = 0; i < frame->stackPtr; i ++) {
+    fputs("\nStack:\n<<<\n", stream);
+    for (size_t i = 0; i < frame->stack.fixed.len; i ++) {
         fputc(' ', stream);
-        const struct Val elem = frame->stack[i];
-        const struct Array tostr = tostring(elem);
+        const struct Val *elem = FixedList_get(frame->stack.fixed, i);
+        const struct Array tostr = tostring(*elem);
         writeAsStr(tostr, stream);
         destroyArr(tostr);
         fputc('\n', stream);
@@ -37,10 +53,11 @@ void stackdump(struct Frame *frame, FILE *stream) {
 }
 
 void destroyFrame(struct Frame *frame) {
-    for (size_t i = 0; i < frame->stackPtr; i ++) {
-        destroy(frame->stack[i]);
+    for (size_t i = 0; i < frame->stack.fixed.len; i ++) {
+        struct Val *elem = FixedList_get(frame->stack.fixed, i);
+        destroy(*elem);
     }
-    free(frame->stack);
+    DynamicList_clear(&frame->stack);
 
     for (size_t i = 0; i < frame->localsSize; i ++) {
         destroy(frame->locals[i]);
@@ -49,24 +66,25 @@ void destroyFrame(struct Frame *frame) {
 }
 
 static void push(struct Frame *frame, struct Val val) {
-    frame->stack = realloc(frame->stack,
-                           sizeof(struct Val) * (frame->stackPtr + 1));
-    frame->stack[frame->stackPtr ++] = val;
+    DynamicList_add(&frame->stack, &val);
 }
 
 static struct Val pop(struct Frame *frame) {
-    const struct Val val = frame->stack[-- frame->stackPtr];
-    frame->stack = realloc(frame->stack,
-                           sizeof(struct Val) * frame->stackPtr);
-    return val;
+    // TODO: replace with future removeLast
+    const size_t i = frame->stack.fixed.len - 1;
+    const struct Val *val = FixedList_get(frame->stack.fixed, i);
+    DynamicList_removeAt(&frame->stack, i);
+    return *val;
 }
 
 inline static struct Val peek(const struct Frame *frame) {
-    return frame->stack[frame->stackPtr - 1];
+    const size_t i = frame->stack.fixed.len - 1;
+    const struct Val *val = FixedList_get(frame->stack.fixed, i);
+    return *val;
 }
 
 inline static bool has(const struct Frame *frame, const size_t elems) {
-    return frame->stackPtr >= elems;
+    return frame->stack.fixed.len >= elems;
 }
 
 #define BINARY_OP_START(id) case id: { \
@@ -194,13 +212,16 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 const uint32_t len = READT(uint32_t);
                 if (!has(frame, len))
                     break;
-                struct Val *start = frame->stack + frame->stackPtr - len;
-                frame->stackPtr -= len;
-                const struct Val arr = arrayCreate(start, len);
-                frame->stack = realloc(frame->stack,
-                                       (frame->stackPtr + 1) * sizeof(struct Val));
-                frame->stack[frame->stackPtr] = arr;
-                frame->stackPtr ++;
+                struct Val arr;
+                if (len > 0) {
+                    const size_t index = frame->stack.fixed.len - len;
+                    struct Val *start = FixedList_get(frame->stack.fixed, index);
+                    arr = arrayCreate(start, len);
+                    DynamicList_removeRange(&frame->stack, index, frame->stack.fixed.len - 1);
+                } else {
+                    arr = arrayEmpty();
+                }
+                push(frame, arr);
             } break;
 
             case IT_REV: {
