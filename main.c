@@ -2,6 +2,7 @@
 #include "gen.h"
 
 #include <stdio.h>
+#include <time.h>
 
 // #define CLASS_FILE "test_class_Test.h"
 // #include "class.h"
@@ -33,26 +34,36 @@ int main() {
     struct FunGenCtx main;
     startFunGen(&main);
 
-    struct GenBlock b1;
-    struct GenBlock b2;
+    struct GenBlock start;
+    struct GenBlock loop;
+    const int i = 0;
 
     {
-        startBlockGen(&b1);
+        startBlockGen(&start);
 
-        blockGenInstrsEz(&b1, (Inst[]) { I_IMMF(2.2) });
+        blockGenInstrsEz(&start, (Inst[]) { I_IMMI(100000) });
+        blockGenInstrsEz(&start, (Inst[]) { I_LPUT(i) });
 
-        blockGenInstrsEz(&b1, (Inst[]) { IT_JUMP });
-            blockGenRef(&b1, &b2);
+        //blockGenInstrsEz(&start, (Inst[]) { IT_JUMP });
+        //    blockGenRef(&start, &loop);
 
-        endBlockGen(&b1, &main);
+        endBlockGen(&start, &main);
     }
 
     {
-        startBlockGen(&b2);
+        startBlockGen(&loop);
 
-        blockGenInstrsEz(&b2, (Inst[]) { I_IMMF(1.1) });
+        blockGenInstrsEz(&loop, (Inst[]) { I_IMMI(1) });
+        blockGenInstrsEz(&loop, (Inst[]) { I_LGET(i) });
+        blockGenInstrsEz(&loop, (Inst[]) { I_SUB() });
+        blockGenInstrsEz(&loop, (Inst[]) { I_LPUT(i) });
 
-        endBlockGen(&b2, &main);
+        blockGenInstrsEz(&loop, (Inst[]) { I_LGET(i) });
+        blockGenInstrsEz(&loop, (Inst[]) { I_NZNUM() });
+        blockGenInstrsEz(&loop, (Inst[]) { IT_BRANCH });
+            blockGenRef(&loop, &loop);
+
+        endBlockGen(&loop, &main);
     }
 
     struct InstChunk chunk = endFunGen(&main);
@@ -62,7 +73,14 @@ int main() {
 
     struct Frame frame;
     initFrame(&frame);
+
+    clock_t t = clock();
     interpret(&frame, chunk);
+    t = clock() - t;
+    double seconds = (double) t / CLOCKS_PER_SEC;
+    printf("Execution time: %fs\n", seconds);
+
+
     stackdump(&frame, stdout);
     destroyFrame(&frame);
     gcStats(stdout);

@@ -269,6 +269,11 @@ void stackdump(struct Frame *frame, FILE *stream);
 #define IT_REVR   (Inst) 0x0e
 #define IT_REF    (Inst) 0x0f
 #define IT_BRANCH (Inst) 0x10 // +4
+#define IT_EQNUM  (Inst) 0x11
+#define IT_GTNUM  (Inst) 0x12
+#define IT_LTNUM  (Inst) 0x13
+#define IT_NZNUM  (Inst) 0x14
+#define IT_SUB    (Inst) 0x15
 
 
 #define III_ARR_4(p) ((Inst *)p)[0], ((Inst *)p)[1], ((Inst *)p)[2], ((Inst *)p)[3]
@@ -291,6 +296,11 @@ void stackdump(struct Frame *frame, FILE *stream);
 #define I_COPY()     IT_COPY
 #define I_REF()      IT_REF
 #define I_BRANCH(tg) IT_BRANCH, III_ARR_4((uint32_t[]){(uint32_t)tg})
+#define I_EQNUM()    IT_EQNUM
+#define I_GTNUM()    IT_GTNUM
+#define I_LTNUM()    IT_LTNUM
+#define I_NZNUM()    IT_NZNUM
+#define I_SUB()      IT_SUB
 
 
 #define INSTRS(...)  ((Inst[]) { __VA_ARGS__ })

@@ -14,6 +14,16 @@ void initFrame(struct Frame *frame) {
 }
 
 void stackdump(struct Frame *frame, FILE *stream) {
+    fputs("locals:\n", stream);
+    for (size_t i = 0; i < frame->localsSize; i ++) {
+        fprintf(stream, " %zu: ", i);
+        const struct Val elem = frame->locals[i];
+        const struct Array tostr = tostring(elem);
+        writeAsStr(tostr, stream);
+        destroyArr(tostr);
+        fputc('\n', stream);
+    }
+
     fputs("<<<\n", stream);
     for (size_t i = 0; i < frame->stackPtr; i ++) {
         fputc(' ', stream);
@@ -58,6 +68,37 @@ inline static struct Val peek(const struct Frame *frame) {
 inline static bool has(const struct Frame *frame, const size_t elems) {
     return frame->stackPtr >= elems;
 }
+
+#define BINARY_OP_START(id) case id: { \
+if (!has(frame, 2)) \
+break; \
+const struct Val a = pop(frame); \
+const struct Val b = pop(frame); \
+struct Val res;
+
+#define BINARY_OP_II (a.type == VT_INT && b.type == VT_INT)
+#define BINARY_OP_IF (a.type == VT_INT && b.type == VT_FLOAT)
+#define BINARY_OP_FF (a.type == VT_FLOAT && b.type == VT_FLOAT)
+#define BINARY_OP_FI (a.type == VT_FLOAT && b.type == VT_INT)
+
+#define BINARY_OP_END push(frame, res); \
+destroy(a); \
+destroy(b); \
+} break;
+
+
+#define UNARY_OP_START(id) case id: { \
+if (!has(frame, 1)) \
+break; \
+const struct Val a = pop(frame); \
+struct Val res;
+
+#define UNARY_OP_F (a.type == VT_FLOAT)
+#define UNARY_OP_I (a.type == VT_INT)
+
+#define UNARY_OP_END push(frame, res); \
+destroy(a); \
+} break;
 
 void interpret(struct Frame *frame, struct InstChunk chunk) {
     uint32_t ip = 0;
@@ -120,32 +161,34 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 moveOrCopy(&frame->locals[id], &v);
             } break;
 
-            case IT_ADD: {
-                if (!has(frame, 2))
-                    break;
-
-                const struct Val a = pop(frame);
-                const struct Val b = pop(frame);
-
-                struct Val res;
-                if (a.type == VT_INT && b.type == VT_INT) {
+            BINARY_OP_START(IT_ADD)
+                if BINARY_OP_II {
                     res = intVal(a.vint + b.vint);
-                } else if (a.type == VT_INT && b.type == VT_FLOAT) {
+                } else if BINARY_OP_IF {
                     res = floatVal((double) a.vint + b.vfloat);
-                } else if (a.type == VT_FLOAT && b.type == VT_INT) {
+                } else if BINARY_OP_FI {
                     res = floatVal(a.vfloat + (double) b.vint);
-                } else if (a.type == VT_FLOAT && b.type == VT_FLOAT) {
+                } else if BINARY_OP_FF {
                     res = floatVal(a.vfloat + b.vfloat);
                 } else {
                     res = nullVal();
                 }
+            BINARY_OP_END
 
-                push(frame, res);
 
-                cleanup:
-                    destroy(a);
-                    destroy(b);
-            } break;
+            BINARY_OP_START(IT_SUB)
+                if BINARY_OP_II {
+                    res = intVal(a.vint - b.vint);
+                } else if BINARY_OP_IF {
+                    res = floatVal((double) a.vint - b.vfloat);
+                } else if BINARY_OP_FI {
+                    res = floatVal(a.vfloat - (double) b.vint);
+                } else if BINARY_OP_FF {
+                    res = floatVal(a.vfloat - b.vfloat);
+                } else {
+                    res = nullVal();
+                }
+            BINARY_OP_END
 
             case IT_ARR: {
                 const uint32_t len = READT(uint32_t);
@@ -222,6 +265,58 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                         ip = tg;
                 destroy(v);
             } break;
+
+            BINARY_OP_START(IT_EQNUM)
+                if BINARY_OP_II {
+                    res = boolVal(a.vint == b.vint);
+                } else if BINARY_OP_IF {
+                    res = boolVal((double) a.vint == b.vfloat);
+                } else if BINARY_OP_FI {
+                    res = boolVal(a.vfloat == (double) b.vint);
+                } else if BINARY_OP_FF {
+                    res = boolVal(a.vfloat == b.vfloat);
+                } else {
+                    res = nullVal();
+                }
+            BINARY_OP_END
+
+            BINARY_OP_START(IT_GTNUM)
+                if BINARY_OP_II {
+                    res = boolVal(a.vint > b.vint);
+                } else if BINARY_OP_IF {
+                    res = boolVal((double) a.vint > b.vfloat);
+                } else if BINARY_OP_FI {
+                    res = boolVal(a.vfloat > (double) b.vint);
+                } else if BINARY_OP_FF {
+                    res = boolVal(a.vfloat > b.vfloat);
+                } else {
+                    res = nullVal();
+                }
+            BINARY_OP_END
+
+            BINARY_OP_START(IT_LTNUM)
+                if BINARY_OP_II {
+                    res = boolVal(a.vint < b.vint);
+                } else if BINARY_OP_IF {
+                    res = boolVal((double) a.vint < b.vfloat);
+                } else if BINARY_OP_FI {
+                    res = boolVal(a.vfloat < (double) b.vint);
+                } else if BINARY_OP_FF {
+                    res = boolVal(a.vfloat < b.vfloat);
+                } else {
+                    res = nullVal();
+                }
+            BINARY_OP_END
+
+            UNARY_OP_START(IT_NZNUM)
+                if UNARY_OP_F {
+                    res = boolVal(a.vfloat != 0);
+                } else if UNARY_OP_I {
+                    res = boolVal(a.vint != 0);
+                } else {
+                    res = nullVal();
+                }
+            UNARY_OP_END
 
             default: {
                 assert(false);
