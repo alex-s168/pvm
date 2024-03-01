@@ -71,7 +71,12 @@ if (sp > max) max = sp
                 DynamicList_addAll(&dyn.instr, &READT(uint32_t), sizeof(uint32_t));
             } break;
 
-            case IT_EQNUM:
+            case IT_LCLEAR: {
+                DynamicList_add(&dyn.instr, &i);
+                DynamicList_addAll(&dyn.instr, &READT(uint32_t), sizeof(uint32_t));
+            } break;
+
+           case IT_EQNUM:
             case IT_GTNUM:
             case IT_LTNUM:
             case IT_SUB:

@@ -161,6 +161,10 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
 
             case IT_LGET: {
                 const uint32_t id = READT(uint32_t);
+                if (id >= frame->localsSize) {
+                    push(frame, nullVal());
+                    break;
+                }
                 struct Val v = frame->locals[id];
                 v.owned = false;
                 push(frame, v);
@@ -177,6 +181,15 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 frame->localsSize = id + 1;
                 struct Val v = pop(frame);
                 moveOrCopy(&frame->locals[id], &v);
+            } break;
+
+            case IT_LCLEAR: {
+                const uint32_t id = READT(uint32_t);
+                if (id >= frame->localsSize)
+                    break;
+
+                destroy(frame->locals[id]);
+                frame->locals[id] = nullVal();
             } break;
 
             BINARY_OP_START(IT_ADD)

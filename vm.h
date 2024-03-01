@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "kollektions/kallok.h"
 #include "kollektions/lists.h"
 
 #define DBG
@@ -244,7 +245,7 @@ static struct DynamicChunk dynChunkInit() {
     struct DynamicChunk c;
     DynamicList_init(&c.instr,
                      sizeof(Inst),
-                     getLIBCAlloc(),
+                     KALLOK_PREFIX getLIBCAlloc(),
                      0);
     return c;
 }
@@ -307,7 +308,8 @@ void disasm(struct InstChunk chunk, FILE *stream);
 #define IT_LTNUM  (Inst) 0x13
 #define IT_NZNUM  (Inst) 0x14
 #define IT_SUB    (Inst) 0x15
-#define IT_JITALYSDAT0   (Inst) 0x16
+#define IT_JITALYSDAT0   (Inst) 0x16 // +4 
+#define IT_LCLEAR (Inst) 0x17 // +4
 
 
 #define III_ARR_4(p) ((Inst *)p)[0], ((Inst *)p)[1], ((Inst *)p)[2], ((Inst *)p)[3]
@@ -336,6 +338,7 @@ void disasm(struct InstChunk chunk, FILE *stream);
 #define I_NZNUM()    IT_NZNUM
 #define I_SUB()      IT_SUB
 #define I_JITALYSDAT0(data)      IT_JITALYSDAT0, III_ARR_4((uint32_t[]){(uint32_t)data})
+#define I_LCLEAR(id) IT_LCLEAR, III_ARR_4((uint32_t[]){(uint32_t)id})
 
 
 #define INSTRS(...)  ((Inst[]) { __VA_ARGS__ })

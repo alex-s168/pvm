@@ -1,4 +1,6 @@
 #include "vm.h"
+#include <stdint.h>
+#include <stdio.h>
 
 void disasm(struct InstChunk chunk, FILE *stream) {
     uint32_t ip = 0;
@@ -37,17 +39,22 @@ void disasm(struct InstChunk chunk, FILE *stream) {
 
             case IT_JUMP: {
                 uint32_t tg = READT(uint32_t);
-                fprintf(stream , " jump %u\n", tg);
+                fprintf(stream, " jump %u\n", tg);
             } break;
 
             case IT_LGET: {
                 const uint32_t id = READT(uint32_t);
-                fprintf(stream , " lget %u\n", id);
+                fprintf(stream, " lget %u\n", id);
             } break;
 
             case IT_LPUT: {
                 const uint32_t id = READT(uint32_t);
-                fprintf(stream , " lput %u\n", id);
+                fprintf(stream, " lput %u\n", id);
+            } break;
+
+            case IT_LCLEAR: {
+                const uint32_t id = READT(uint32_t);
+                fprintf(stream, " lclear %u\n", id);
             } break;
 
             SIMPLE(IT_ADD, " add\n")
