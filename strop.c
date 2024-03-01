@@ -41,7 +41,7 @@ struct Array tostring(struct Val v) {
 
             return v.varr;
 
-            not_char:
+            not_char: {
                 struct Array out = arrayFromCStr("[").varr;
                 const struct Array seperator = arrayFromCStr(", ").varr;
                 for (size_t i = 0; i < v.varr.elements; i ++) {
@@ -57,6 +57,7 @@ struct Array tostring(struct Val v) {
                 destroyArr(seperator);
                 destroyArr(end);
                 return out;
+            }
         } break;
 
         case VT_NULL: {

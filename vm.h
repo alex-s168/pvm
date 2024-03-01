@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#define _INC_STDIO
 #include "kollektions/kallok.h"
 #include "kollektions/lists.h"
 
