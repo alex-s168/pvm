@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void initFrame(struct Frame *frame, bool extraDbg) {
     frame->extraDbg = extraDbg;
@@ -76,9 +77,9 @@ static void push(struct Frame *frame, struct Val val) {
 static struct Val pop(struct Frame *frame) {
     // TODO: replace with future removeLast
     const size_t i = frame->stack.fixed.len - 1;
-    const struct Val *val = FixedList_get(frame->stack.fixed, i);
+    const struct Val val = *(struct Val *)FixedList_get(frame->stack.fixed, i);
     DynamicList_removeAt(&frame->stack, i);
-    return *val;
+    return val;
 }
 
 inline static struct Val peek(const struct Frame *frame) {
@@ -122,19 +123,23 @@ struct Val res;
 destroy(a); \
 } break;
 
+// #define STUPID_LOCALS
+
 void interpret(struct Frame *frame, struct LocalFrame *locals, struct InstChunk *chunk) {
     if (!chunk->basicAnalyzed)
         analyzeBasic(chunk);
 
+#ifndef STUPID_LOCALS
     uint32_t oldLocalsSize = locals->size;
     uint32_t localsSize = chunk->localsCount;
     if (localsSize > oldLocalsSize) {
-        locals->size = chunk->localsCount;
-        locals->data = realloc(locals->data, chunk->localsCount * sizeof(struct Val));
+        locals->size = localsSize;
+        locals->data = realloc(locals->data, localsSize * sizeof(struct Val));
         for (size_t i = oldLocalsSize; i < localsSize; i ++) {
             locals->data[i] = nullVal();
         }
     }
+#endif
 
     uint32_t ip = 0;
     while (ip < chunk->instrSize) {
@@ -178,6 +183,12 @@ void interpret(struct Frame *frame, struct LocalFrame *locals, struct InstChunk 
 
             case IT_LGET: {
                 const uint32_t id = READT(uint32_t);
+#ifdef STUPID_LOCALS
+                if (id >= locals->size) {
+                    push(frame, nullVal());
+                    break;
+                }
+#endif
                 struct Val v = locals->data[id];
                 v.owned = false;
                 push(frame, v);
@@ -187,6 +198,13 @@ void interpret(struct Frame *frame, struct LocalFrame *locals, struct InstChunk 
                 const uint32_t id = READT(uint32_t);
                 if (!has(frame, 1))
                     break;
+#ifdef STUPID_LOCALS
+                if (id >= locals->size) {
+                    locals->data = realloc(locals->data,
+                                           sizeof(struct Val) * (id + 1));
+                    locals->size = id + 1;
+                }
+#endif
                 struct Val v = pop(frame);
                 destroy(locals->data[i]);
                 moveOrCopy(&locals->data[id], &v);
@@ -194,6 +212,10 @@ void interpret(struct Frame *frame, struct LocalFrame *locals, struct InstChunk 
 
             case IT_LCLEAR: {
                 const uint32_t id = READT(uint32_t);
+#ifdef STUPID_LOCALS
+                if (id >= locals->size)
+                    break;
+#endif
                 destroy(locals->data[id]);
                 locals->data[id] = nullVal();
             } break;

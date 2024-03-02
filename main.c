@@ -48,6 +48,10 @@ int main() {
     struct GenBlock start;
     struct GenBlock loop;
     const int i = 0;
+    const int a = 1;
+    const int b = 2;
+    const int c = 3;
+    const int d = 4;
 
     {
         startBlockGen(&start);
@@ -68,6 +72,33 @@ int main() {
         blockGenInstrsEz(&loop, (Inst[]) { I_LGET(i) });
         blockGenInstrsEz(&loop, (Inst[]) { I_SUB() });
         blockGenInstrsEz(&loop, (Inst[]) { I_LPUT(i) });
+
+        Inst instr[] = {
+            I_IMMI(9),
+            I_IMMI(5),
+            I_ADD(),
+            I_LPUT(a),
+
+            I_LGET(a),
+            I_IMMI(1),
+            I_SUB(),
+            I_LPUT(b),
+
+            I_LGET(a),
+            I_LGET(b),
+            I_ADD(),
+            I_LPUT(c),
+
+            I_LGET(c),
+            I_LGET(b),
+            I_SUB(),
+            I_LPUT(d),
+
+            I_LGET(d),
+            I_POP(),
+        };
+
+        blockGenInstrs(&loop, instr, sizeof(instr));
 
         blockGenInstrsEz(&loop, (Inst[]) { I_LGET(i) });
         blockGenInstrsEz(&loop, (Inst[]) { I_NZNUM() });

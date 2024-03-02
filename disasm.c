@@ -91,15 +91,15 @@ void disasm(struct InstChunk chunk, FILE *stream) {
             } break;
 
             case IT_HINT_BLOCK_BEGIN: {
-                fprintf(stream, "hint_block_begin\n");
+                fprintf(stream, " hint_block_begin\n");
             } break;
 
             case IT_HINT_BLOCK_END: {
-                fprintf(stream, "hint_block_end\n");
+                fprintf(stream, " hint_block_end\n");
             } break;
 
             case IT_HINT_OPTIMIZE: {
-                fprintf(stream, "hint_optimize\n");
+                fprintf(stream, " hint_optimize\n");
             } break;
 
             default:
