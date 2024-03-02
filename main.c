@@ -13,6 +13,7 @@ int main() {
     // a->fname = arrayFromStrCopy("33", 2).varr;
     // OBJ_UNUSE(a);
 
+    /*
     Inst insts[] = {
         I_IMMF(1.1),
         I_LPUT(0),
@@ -21,7 +22,8 @@ int main() {
         I_LPUT(2),
         I_LGET(2),
     };
-    struct InstChunk chunk = { .instr = insts, .instrSize = sizeof(insts) };
+    struct InstChunk chunk;
+    initInstChunk(&chunk, sizeof(insts), insts);
 
     size_t inCount;
     size_t outCount;
@@ -37,8 +39,9 @@ int main() {
     disasm(dynChunkAs(analyzed), stdout);
 
     DynamicList_clear(&analyzed.instr);
+*/
 
-    /*
+    
     struct FunGenCtx main;
     startFunGen(&main);
 
@@ -83,21 +86,25 @@ int main() {
     fputc('\n', stdout);
 
     struct Frame frame;
+    struct LocalFrame locals;
     initFrame(&frame, true);
+    initLocalFrame(&locals);
 
     clock_t t = clock();
-    interpret(&frame, chunk);
+    interpret(&frame, &locals, &chunk);
     t = clock() - t;
     double seconds = (double) t / CLOCKS_PER_SEC;
     printf("Execution time: %fs\n\n", seconds);
 
 
+    localdump(&locals, stdout);
     framedump(&frame, stdout);
     destroyFrame(&frame);
+    destroyLocalFrame(&locals);
     fputc('\n', stdout);
     gcStats(stdout);
 
     free(chunk.instr);
-*/
+
     return 0;
 }

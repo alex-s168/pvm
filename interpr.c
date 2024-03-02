@@ -6,11 +6,6 @@
 void initFrame(struct Frame *frame, bool extraDbg) {
     frame->extraDbg = extraDbg;
 
-    frame->locals = NULL;
-    frame->localsSize = 0;
-
-    frame->parent = NULL;
-
     Ally ally;
     if (extraDbg)
         ally = getStatAlloc(getLIBCAlloc(), &frame->stackAllocStats);
@@ -23,20 +18,34 @@ void initFrame(struct Frame *frame, bool extraDbg) {
                      4);
 }
 
+void initLocalFrame(struct LocalFrame *frame) {
+    frame->data = NULL;
+    frame->size = 0;
+}
+
+void destroyLocalFrame(struct LocalFrame *frame) {
+    for (size_t i = 0; i < frame->size; i ++) {
+        destroy(frame->data[i]);
+    }
+    free(frame->data);
+}
+
+void localdump(struct LocalFrame *locals, FILE *stream) {
+    fputs("Locals:\n", stream);
+    for (size_t i = 0; i < locals->size; i ++) {
+        fprintf(stream, " %zu: ", i);
+        const struct Val elem = locals->data[i];
+        const struct Array tostr = tostring(elem);
+        writeAsStr(tostr, stream);
+        destroyArr(tostr);
+        fputc('\n', stream);
+    }
+}
+
 void framedump(struct Frame *frame, FILE *stream) {
     if (frame->extraDbg) {
         fputs("Stack allocation statistics:\n", stream);
         outputStats(&frame->stackAllocStats, stream);
-        fputc('\n', stream);
-    }
-
-    fputs("Locals:\n", stream);
-    for (size_t i = 0; i < frame->localsSize; i ++) {
-        fprintf(stream, " %zu: ", i);
-        const struct Val elem = frame->locals[i];
-        const struct Array tostr = tostring(elem);
-        writeAsStr(tostr, stream);
-        destroyArr(tostr);
         fputc('\n', stream);
     }
 
@@ -58,11 +67,6 @@ void destroyFrame(struct Frame *frame) {
         destroy(*elem);
     }
     DynamicList_clear(&frame->stack);
-
-    for (size_t i = 0; i < frame->localsSize; i ++) {
-        destroy(frame->locals[i]);
-    }
-    free(frame->locals);
 }
 
 static void push(struct Frame *frame, struct Val val) {
@@ -118,10 +122,23 @@ struct Val res;
 destroy(a); \
 } break;
 
-void interpret(struct Frame *frame, struct InstChunk chunk) {
+void interpret(struct Frame *frame, struct LocalFrame *locals, struct InstChunk *chunk) {
+    if (!chunk->basicAnalyzed)
+        analyzeBasic(chunk);
+
+    uint32_t oldLocalsSize = locals->size;
+    uint32_t localsSize = chunk->localsCount;
+    if (localsSize > oldLocalsSize) {
+        locals->size = chunk->localsCount;
+        locals->data = realloc(locals->data, chunk->localsCount * sizeof(struct Val));
+        for (size_t i = oldLocalsSize; i < localsSize; i ++) {
+            locals->data[i] = nullVal();
+        }
+    }
+
     uint32_t ip = 0;
-    while (ip < chunk.instrSize) {
-#define READA(am) &chunk.instr[(ip += am) - am]
+    while (ip < chunk->instrSize) {
+#define READA(am) &chunk->instr[(ip += am) - am]
 #define READT(t) (*(t *)READA(sizeof(t)))
         Inst i = READT(Inst);
         switch (i) {
@@ -161,11 +178,7 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
 
             case IT_LGET: {
                 const uint32_t id = READT(uint32_t);
-                if (id >= frame->localsSize) {
-                    push(frame, nullVal());
-                    break;
-                }
-                struct Val v = frame->locals[id];
+                struct Val v = locals->data[id];
                 v.owned = false;
                 push(frame, v);
             } break;
@@ -174,22 +187,15 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                 const uint32_t id = READT(uint32_t);
                 if (!has(frame, 1))
                     break;
-                if (id >= frame->localsSize) {
-                    frame->locals = realloc(frame->locals,
-                                            sizeof(struct Val) * (id + 1));
-                }
-                frame->localsSize = id + 1;
                 struct Val v = pop(frame);
-                moveOrCopy(&frame->locals[id], &v);
+                destroy(locals->data[i]);
+                moveOrCopy(&locals->data[id], &v);
             } break;
 
             case IT_LCLEAR: {
                 const uint32_t id = READT(uint32_t);
-                if (id >= frame->localsSize)
-                    break;
-
-                destroy(frame->locals[id]);
-                frame->locals[id] = nullVal();
+                destroy(locals->data[id]);
+                locals->data[id] = nullVal();
             } break;
 
             BINARY_OP_START(IT_ADD)
@@ -205,7 +211,6 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                     res = nullVal();
                 }
             BINARY_OP_END
-
 
             BINARY_OP_START(IT_SUB)
                 if BINARY_OP_II {
@@ -283,9 +288,9 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
                     push(frame, nullVal());
                     break;
                 }
-                const struct Val other = peek(frame);
+                struct Val other = peek(frame);
                 struct Val new;
-                refOrCopy(&new, &other);
+                ref(&new, &other);
                 push(frame, new);
             } break;
 
@@ -355,6 +360,11 @@ void interpret(struct Frame *frame, struct InstChunk chunk) {
             case IT_JITALYSDAT0: {
                 (void) READT(uint32_t);
             } break;
+
+            case IT_HINT_BLOCK_BEGIN:
+            case IT_HINT_BLOCK_END:
+            case IT_HINT_OPTIMIZE:
+                break;
 
             default: {
                 assert(false);

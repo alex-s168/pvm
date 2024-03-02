@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(pvm C)
+project(pvm C CXX)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -45,4 +45,6 @@ add_executable(pvm
         kollektions/kallok_pages.h
         kollektions/alloc/pages.c
         analyze.c
-        disasm.c)
+        disasm.c
+        jit.cpp
+        analyze_basic.c)

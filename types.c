@@ -41,6 +41,7 @@ void copy(struct Val *dest, const struct Val *src) {
             assert(false);
 #endif
     }
+    dest->owned = true;
 }
 
 void moveOrCopy(struct Val *dest, const struct Val *src) {
@@ -63,6 +64,27 @@ void refOrCopy(struct Val *dest, const struct Val *src) {
         *dest = *src;
     } else {
         copy(dest, src);
+    }
+}
+
+void ref(struct Val *dest, struct Val *src) {
+    switch (src->type) {
+        case VT_INT:
+        case VT_BOOL:
+        case VT_CHAR:
+        case VT_NULL:
+        case VT_FLOAT: {
+            *dest = *src;
+        } break;
+
+        case VT_OBJ: {
+            gcUse(src->vobj);
+            *dest = *src;
+        } break; 
+
+        case VT_ARR: {
+            *dest = arrayValRef(src->varr);
+        } break;
     }
 }
 

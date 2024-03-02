@@ -140,6 +140,8 @@ void moveOrCopy(struct Val *dest, const struct Val *src);
 
 void refOrCopy(struct Val *dest, const struct Val *src);
 
+void ref(struct Val *dest, struct Val *src);
+
 void destroyArr(const struct Array a);
 void destroy(const struct Val v);
 
@@ -229,7 +231,16 @@ typedef uint8_t Inst;
 struct InstChunk {
     uint32_t instrSize;
     Inst *instr;
+
+    bool basicAnalyzed;
+    uint32_t localsCount;
 };
+
+static void initInstChunk(struct InstChunk *chunk, uint32_t size, Inst *inst) {
+    chunk->instrSize = size;
+    chunk->instr = inst;
+    chunk->basicAnalyzed = false;
+}
 
 static void dumpChunk(struct InstChunk chunk, FILE *stream) {
     for (size_t i = 0; i < chunk.instrSize; i ++) {
@@ -253,30 +264,37 @@ static struct DynamicChunk dynChunkInit() {
 
 static struct InstChunk dynChunkAs(struct DynamicChunk dyn) {
     return (struct InstChunk) {
-        .instr = dyn.instr.fixed.data,
-        .instrSize = dyn.instr.fixed.len
+        .instrSize = (uint32_t) dyn.instr.fixed.len,
+        .instr = (Inst *) dyn.instr.fixed.data, 
+        .basicAnalyzed = false,
     };
 }
+
+struct LocalFrame {
+    struct Val *data;
+    uint32_t size;
+};
 
 struct Frame {
     bool extraDbg;
 
-    struct Frame *parent;
-
     struct KALLOK_PREFIX AllyStats stackAllocStats;
     /* struct Val * */
     struct DynamicList stack;
-
-    struct Val *locals;
-    uint32_t localsSize;
 };
+
+void initLocalFrame(struct LocalFrame *frame);
+void destroyLocalFrame(struct LocalFrame *frame);
 
 void initFrame(struct Frame *frame, bool extraDbg);
 void destroyFrame(struct Frame *frame);
 
-void interpret(struct Frame *frame, struct InstChunk chunk);
+void analyzeBasic(struct InstChunk *inst);
+
+void interpret(struct Frame *frame, struct LocalFrame *locals, struct InstChunk *chunk);
 
 void framedump(struct Frame *frame, FILE *stream);
+void localdump(struct LocalFrame *locals, FILE *stream);
 
 struct DynamicChunk analyze(struct InstChunk in,
                          size_t *inCount,
@@ -309,8 +327,11 @@ void disasm(struct InstChunk chunk, FILE *stream);
 #define IT_LTNUM  (Inst) 0x13
 #define IT_NZNUM  (Inst) 0x14
 #define IT_SUB    (Inst) 0x15
-#define IT_JITALYSDAT0   (Inst) 0x16 // +4 
-#define IT_LCLEAR (Inst) 0x17 // +4
+#define IT_JITALYSDAT0      (Inst) 0x16 // +4 
+#define IT_LCLEAR           (Inst) 0x17 // +4
+#define IT_HINT_BLOCK_BEGIN (Inst) 0x18
+#define IT_HINT_BLOCK_END   (Inst) 0x19
+#define IT_HINT_OPTIMIZE    (Inst) 0x1a
 
 
 #define III_ARR_4(p) ((Inst *)p)[0], ((Inst *)p)[1], ((Inst *)p)[2], ((Inst *)p)[3]
@@ -338,8 +359,11 @@ void disasm(struct InstChunk chunk, FILE *stream);
 #define I_LTNUM()    IT_LTNUM
 #define I_NZNUM()    IT_NZNUM
 #define I_SUB()      IT_SUB
-#define I_JITALYSDAT0(data)      IT_JITALYSDAT0, III_ARR_4((uint32_t[]){(uint32_t)data})
-#define I_LCLEAR(id) IT_LCLEAR, III_ARR_4((uint32_t[]){(uint32_t)id})
+#define I_JITALYSDAT0(data)     IT_JITALYSDAT0, III_ARR_4((uint32_t[]){(uint32_t)data})
+#define I_LCLEAR(id)            IT_LCLEAR, III_ARR_4((uint32_t[]){(uint32_t)id})
+#define I_HINT_BLOCK_BEGIN()    IT_HINT_BLOCK_BEGIN
+#define I_HINT_BLOCK_END()      IT_HINT_BLOCK_END
+#define I_HINT_OPTIMIZE()       IT_HINT_OPTIMIZE
 
 
 #define INSTRS(...)  ((Inst[]) { __VA_ARGS__ })

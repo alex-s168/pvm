@@ -1,4 +1,5 @@
 #include "gen.h"
+#include "vm.h"
 
 void startFunGen(struct FunGenCtx *ctx) {
     ctx->blocks = NULL;
@@ -11,9 +12,11 @@ void startBlockGen(struct GenBlock *block) {
     block->locationResolved = false;
     block->refs = NULL;
     block->refsCount = 0;
+    blockGenInstrsEz(block, (Inst[]){ IT_HINT_BLOCK_BEGIN });
 }
 
 void endBlockGen(struct GenBlock *block, struct FunGenCtx *parent) {
+    blockGenInstrsEz(block, (Inst[]){ IT_HINT_BLOCK_END });
     parent->blocks = realloc(parent->blocks,
                              sizeof(struct GenBlock *) * (parent->blocksCount + 1));
     parent->blocks[parent->blocksCount ++] = block;
@@ -44,7 +47,9 @@ struct InstChunk endFunGen(struct FunGenCtx *ctx) {
         }
     }
 
-    return (struct InstChunk) { .instr = out, .instrSize = total };
+    struct InstChunk ret;
+    initInstChunk(&ret, total, out);
+    return ret;
 }
 
 void destroyFunGen(struct FunGenCtx *ctx) {

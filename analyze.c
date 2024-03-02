@@ -1,3 +1,4 @@
+#include "kollektions/dynamic_list.h"
 #include "vm.h"
 
 struct DynamicChunk analyze(struct InstChunk in,
@@ -76,7 +77,13 @@ if (sp > max) max = sp
                 DynamicList_addAll(&dyn.instr, &READT(uint32_t), sizeof(uint32_t));
             } break;
 
-           case IT_EQNUM:
+            case IT_HINT_BLOCK_BEGIN:
+            case IT_HINT_BLOCK_END:
+            case IT_HINT_OPTIMIZE: {
+                DynamicList_add(&dyn.instr, &i);
+            } break;
+
+            case IT_EQNUM:
             case IT_GTNUM:
             case IT_LTNUM:
             case IT_SUB:

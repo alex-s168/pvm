@@ -74,7 +74,7 @@ void disasm(struct InstChunk chunk, FILE *stream) {
 
             case IT_BRANCH: {
                 uint32_t tg = READT(uint32_t);
-                fprintf(stream , " branch %u\n", tg);
+                fprintf(stream, " branch %u\n", tg);
             } break;
 
             SIMPLE(IT_EQNUM, " eqnum\n")
@@ -87,7 +87,19 @@ void disasm(struct InstChunk chunk, FILE *stream) {
 
             case IT_JITALYSDAT0: {
                 uint32_t arg = READT(uint32_t);
-                fprintf(stream , " analysisdata_arg %u\n", arg);
+                fprintf(stream, " analysisdata_arg %u\n", arg);
+            } break;
+
+            case IT_HINT_BLOCK_BEGIN: {
+                fprintf(stream, "hint_block_begin\n");
+            } break;
+
+            case IT_HINT_BLOCK_END: {
+                fprintf(stream, "hint_block_end\n");
+            } break;
+
+            case IT_HINT_OPTIMIZE: {
+                fprintf(stream, "hint_optimize\n");
             } break;
 
             default:
